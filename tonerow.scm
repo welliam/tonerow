@@ -14,14 +14,7 @@
 
 ;** TODO: - add more error clauses to make code safer
 
-(define (range n)
-  ; useful for creating the twelve tone row, [0..11]
-  (if (negative? n)
-      (error "No negative arguments to range: " n)
-      (let loop ((i 0))
-        (if (>= i n)
-            '()
-            (cons i (loop (+ i 1)))))))
+(load "prelude.scm") ; some odds and ends
 
 (define (index-of x lst)
   ; for finding the index of an object in a row
@@ -30,10 +23,10 @@
    ((equal? x (car lst)) 0)
    (else (+ 1 (index-of x (cdr lst))))))
 
+; turning a row to and from numbers is useful as a momentary representation
+; we use it for transposition and inversion, which both require adding or
+; subtracting the positions of individual members
 (define (row->numbers row p-row)
-  ; turning a row to and from numbers is useful as a momentary representation
-  ; we use it for transposition and inversion, which both require adding or
-  ; subtracting the positions of individual members
   (map (lambda (x) (index-of x p-row)) row))
 
 (define (numbers->row numbers p-row)
@@ -81,6 +74,11 @@
 (define (invert-retrograde row p-row)
   (invert (retrograde row) p-row))
 
+; --- matrix
+(define (matrix row p-row)
+  (map (lambda (x) (transpose-to row p-row x))
+       (invert row p-row)))
+
 ; --- printing
 (define (print-permutations row p-row)
   (for-each (lambda (x)
@@ -89,7 +87,7 @@
               (R  ,(retrograde row))
               (I  ,(invert row p-row))
               (RI ,(retrograde-invert row p-row))
-              (RI ,(invert-retrograde row p-row))))
+              (IR ,(invert-retrograde row p-row))))
   (newline))
 
 ; --- row translations
