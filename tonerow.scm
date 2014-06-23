@@ -41,12 +41,14 @@
 
 
 ; --- Transposition -------------------------------
-(define (transpose-to row p-row new)
+(define/protect (transpose-to (row : list?) (p-row : list?) (new : id))
   ; new should be a member of the p-row
   (transpose row p-row (- (index-of new p-row)
                           (index-of (car row) p-row))))
 
-(define (transpose row p-row n)
+(define/protect (transpose (row   : list?)
+                           (p-row : list?)
+                           (n     : integer?))
   (numbers->row (map (lambda (x) (+ x n))
                      (row->numbers row p-row))
                 p-row))
@@ -54,11 +56,11 @@
 
 ; --- Permutations --------------------------------
 ; --- retrograde
-(define (retrograde x) ; the easiest sort of permutation to implement
+(define/protect (retrograde (x : list?))
   (reverse x))
 
 ; --- inversion
-(define (invert-numbers numbers)
+(define/protect (invert-numbers (numbers : (list-of integer?)))
   (let ((head (car numbers)))
     (map (lambda (x) (+ (* (- x head) -1) head))
          numbers)))
@@ -131,7 +133,9 @@
   (transpose berg-violin-concerto-row 12-tone-row:c 5)
   ; -> '(C Eb G B D F A Db E Gb Ab Bb)
 
-  (print-permutations '(0 11 8 9 10) 12-tone-row) ; in memorium dylan thomas
+  (define in-memorium '(0 11 8 9 10))
+
+  (print-permutations in-memorium 12-tone-row) ; in memorium dylan thomas
   ; -> prints out
   ; P:	(0 11 8 9 10)
   ; I:	(0 1 4 3 2)
@@ -140,4 +144,13 @@
   ; IR:	(10 11 0 9 8)
 
   (printf "-------------------------~%")
-  (print-permutations '(C D E F G A B) 12-tone-row:c))
+  (print-permutations '(C D E F G A B) 12-tone-row:c)
+
+  (printf "Berg Violin Concerto Matrix:~%")
+  (for-each displayln (matrix berg-violin-concerto-row 12-tone-row:c))
+  (printf "~%-------------------------~%")
+  (printf "In Memorium Matrix:~%")
+  (for-each displayln (matrix in-memorium 12-tone-row)))
+
+(examples)
+
