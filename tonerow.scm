@@ -3,7 +3,7 @@
 
 ; "Parent rows" are ordered rows which compose the members of "child rows"
 ; (usually just called "rows"). For example, the twelve tone row as represented
-; By the numbers 0..1 would be defined as the a parent row
+; By the numbers 0..11 would be defined as the a parent row
 ; `(0 1 2 3 4 5 6 7 8 9 10 11)', a list.
 ; if we wanted 0 to be c, then we would could define this as the list
 ; (C Db D [..] B). Child rows are derived as members of these lists, so
@@ -12,24 +12,30 @@
 ; they may contain duplicate members. Parent rows must be composed entirely of
 ; unique members.
 
-;** TODO: - add more error clauses to make code safer
-
 (load "prelude.scm") ; some odds and ends
 
-(define (index-of x lst)
+(define/protect (index-of (x : (cut member <> lst)) (lst : list?))
   ; for finding the index of an object in a row
-  (cond
-   ((null? lst) (error "index-of -- not found in list: " x))
-   ((equal? x (car lst)) 0)
-   (else (+ 1 (index-of x (cdr lst))))))
+  (if (equal? x (car lst))
+      0
+      (+ 1 (index-of x (cdr lst)))))
+
+(define/protect (sublist? (lst1 : list?) (lst2 : list?))
+  (or (null? lst1)
+      (and (member (car lst1) lst2)
+           (sublist? (cdr lst1) lst2))))
 
 ; turning a row to and from numbers is useful as a momentary representation
 ; we use it for transposition and inversion, which both require adding or
 ; subtracting the positions of individual members
-(define (row->numbers row p-row)
+(define/protect (row->numbers
+                  (row   : list? (cut sublist? <> p-row))
+                  (p-row : list?))
   (map (lambda (x) (index-of x p-row)) row))
 
-(define (numbers->row numbers p-row)
+(define/protect (numbers->row
+                  (numbers : (list-of integer?))
+                  (p-row   : list?))
   (map (lambda (x)
          (cond
           ((negative? x)
@@ -43,8 +49,9 @@
 ; --- Transposition -------------------------------
 (define/protect (transpose-to (row : list?) (p-row : list?) (new : id))
   ; new should be a member of the p-row
-  (transpose row p-row (- (index-of new p-row)
-                          (index-of (car row) p-row))))
+  (transpose row p-row
+             (- (index-of new p-row)
+                (index-of (car row) p-row))))
 
 (define/protect (transpose (row   : list?)
                            (p-row : list?)
@@ -65,24 +72,32 @@
     (map (lambda (x) (+ (* (- x head) -1) head))
          numbers)))
 
-(define (invert row parent-row)
-  (numbers->row (invert-numbers (row->numbers row parent-row))
-                parent-row))
+(define/protect (invert (row : list? (cut sublist? <> p-row)) (p-row : list?))
+  (numbers->row (invert-numbers (row->numbers row p-row))
+                p-row))
 
 ; --- permutation compositions
-(define (retrograde-invert row p-row)
+(define/protect (retrograde-invert
+                  (row   : list? (cut sublist? <> p-row))
+                  (p-row : list?))
   (retrograde (invert row p-row)))
 
-(define (invert-retrograde row p-row)
+(define/protect (invert-retrograde
+                  (row   : list? (cut sublist? <> p-row))
+                  (p-row : list?))
   (invert (retrograde row) p-row))
 
 ; --- matrix
-(define (matrix row p-row)
+(define/protect (matrix
+                  (row   : list? (cut sublist? <> p-row))
+                  (p-row : list?))
   (map (lambda (x) (transpose-to row p-row x))
        (invert row p-row)))
 
 ; --- printing
-(define (print-permutations row p-row)
+(define/protect (print-permutations
+                  (row   : list? (cut sublist? <> p-row))
+                  (p-row : list?))
   (for-each (lambda (x)
               (for-each display `(,(car x) ":\t" ,(car (cdr x)) "\n")))
             `((P  ,row)
@@ -93,7 +108,10 @@
   (newline))
 
 ; --- row translations
-(define (translate-row row from to)
+(define/protect (translate-row
+                  (row  : list? (cut sublist? <> from))
+                  (from : list?)
+                  (to   : list?))
   ; translates row `row' from parents `from' to 'to'
   (map (lambda (x) (list-ref to (index-of x from)))
        row))
@@ -105,6 +123,7 @@
 
 
 ; --- Examples ------------------------------------
+
 (define (examples)
   (invert '(pp mp f p mf ff) dynamics-row) ; -> '(pp f mp ff mf p)
   (invert '(p mf mp) dynamics-row)         ; -> '(p ff pp)
@@ -115,6 +134,8 @@
   ; R:	(mp mf p)
   ; RI:	(pp ff p)
   ; IR:	(mp p mf)
+  (for-each displayln (matrix '(p mf mp f) dynamics-row))
+  (newline)
 
   (define our-row '(0 2 4 6 8 10 1 3 5 7 8 11))
 
@@ -133,9 +154,9 @@
   (transpose berg-violin-concerto-row 12-tone-row:c 5)
   ; -> '(C Eb G B D F A Db E Gb Ab Bb)
 
-  (define in-memorium '(0 11 8 9 10))
+  (define in-memorium '(0 11 8 9 10)) ; in memorium dylan thomas
 
-  (print-permutations in-memorium 12-tone-row) ; in memorium dylan thomas
+  (print-permutations in-memorium 12-tone-row)
   ; -> prints out
   ; P:	(0 11 8 9 10)
   ; I:	(0 1 4 3 2)
@@ -152,5 +173,58 @@
   (printf "In Memorium Matrix:~%")
   (for-each displayln (matrix in-memorium 12-tone-row)))
 
-(examples)
+; (examples)
 
+(define (print-12:c-matrix x)
+  (for-each displayln (cdr (matrix x 12-tone-row:c))))
+
+(define (main)
+  (print-12:c-matrix (read))
+  (newline)
+  (main))
+
+; --- MODES ---------------------------------------
+(define/protect (shift-list (lst : nonempty-list?) )
+  (append (cdr lst) (list (car lst))))
+
+(define/protect (find-modes/untransposed (scale : list?))
+  (let loop ((s scale) (n (length scale)))
+    (if (zero? n)
+        '()
+        (cons s (loop (shift-list s) (- n 1))))))
+
+(define/protect (find-modes
+                  (scale  : list? (cut sublist? <> parent))
+                  (parent : list?))
+  (map (cut transpose-to <> parent (car scale))
+       (find-modes/untransposed scale)))
+
+(define find-modes/c (cut find-modes <> 12-tone-row:c))
+
+(define/protect (mode-of-limited-transposition?
+                  (scale  : list? (cut sublist? <> parent))
+                  (parent : list?))
+  (member* scale (cdr (find-modes scale parent)) list=?))
+
+(define molt?/c (cut mode-of-limited-transposition? <> 12-tone-row:c))
+
+; --- SYMMETRICAL SCALES --------------------------
+(define (interpolate scale pscale n)
+  (let ((interpol
+         (fold-right1 (lambda (note rest)
+                        (append
+                         (if (negative? n)
+                             (append (transpose (list note) pscale n)
+                                     (list note))
+                             (cons note
+                                   (transpose (list note) pscale n)) )
+                         rest))
+                      scale)))
+    (remove-duplicates
+     (if (negative? n)
+         (append (cdr interpol) (list (car interpol)))
+         interpol))))
+
+(define interpolate/c (cut interpolate <> 12-tone-row:c <>))
+
+(interpolate/c (interpolate/c '(C Gb) 2) -2)
