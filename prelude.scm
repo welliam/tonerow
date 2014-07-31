@@ -1,4 +1,21 @@
+;- a normal cut -----------------------------------
+(define-syntax cut
+  (syntax-rules ()
+    ((_ . xs)
+     (cut-help () () xs))))
+
+(define-syntax cut-help
+  (syntax-rules (<>)
+    ((_ ks b ()) (lambda ks b))
+    ((_ (ks ...) (b ...) (<> . rest))
+     (cut-help (ks ... x) (b ... x) rest))
+    ((_ (ks ...) (b ...) (x . rest))
+     (cut-help (ks ...) (b ... x) rest))))
+
+;- various things ---------------------------------
 (define (displayln x) (display x) (newline))
+(define (print . xs) (for-each display xs) (newline))
+(define call/cc call-with-current-continuation)
 
 (define (fold-right f x lst)
   (if (null? lst)
@@ -11,22 +28,6 @@
   (fold-right1 (lambda (a d)
                  (if (p a) (cons a d) d))
                lst))
-
-(define (partition p lst)
-  (fold-right (lambda (a d)
-                (let ((yes (car d)) (no (car (cdr d))))
-                  (if (p a)
-                      (list (cons a yes) no)
-                      (list yes (cons a no)))))
-              '(() ())
-              lst))
-
-(define (sort seq less?)
-  ; quasi-merge sorting (not in constant space)
-  (if (<= (length seq) 1)
-      seq
-      (append (sort (partition (cut less? <> (car seq)) less?))
-              (sort (partition (cut* not (less? <> (car seq))) less?)))))
 
 ;- membership tests -------------------------------
 (define (member* x lst p)
@@ -179,21 +180,6 @@
      (apply-syn-cont k (x formal ...) (x body ...) rest-arg rest-arg?))
     ((_ x k formals (body ...) rest-arg rest-arg?)
      (apply-syn-cont k formals (x body ...) rest-arg rest-arg?))))
-
-;- a normal cut -----------------------------------
-
-(define-syntax cut
-  (syntax-rules ()
-    ((_ . xs)
-     (cut-help () () xs))))
-
-(define-syntax cut-help
-  (syntax-rules (<>)
-    ((_ ks b ()) (lambda ks b))
-    ((_ (ks ...) (b ...) (<> . rest))
-     (cut-help (ks ... x) (b ... x) rest))
-    ((_ (ks ...) (b ...) (x . rest))
-     (cut-help (ks ...) (b ... x) rest))))
 
 ;- union types ------------------------------------
 
