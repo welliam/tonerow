@@ -123,7 +123,6 @@
 
 
 ; --- Examples ------------------------------------
-
 (define (examples)
   (invert '(pp mp f p mf ff) dynamics-row) ; -> '(pp f mp ff mf p)
   (invert '(p mf mp) dynamics-row)         ; -> '(p ff pp)
@@ -164,16 +163,17 @@
   ; RI:	(2 3 4 1 0)
   ; IR:	(10 11 0 9 8)
 
-  (printf "-------------------------~%")
+  (print "-------------------------")
   (print-permutations '(C D E F G A B) 12-tone-row:c)
 
-  (printf "Berg Violin Concerto Matrix:~%")
+  (print "Berg Violin Concerto Matrix:")
   (for-each displayln (matrix berg-violin-concerto-row 12-tone-row:c))
-  (printf "~%-------------------------~%")
-  (printf "In Memorium Matrix:~%")
+  (newline)
+  (print "-------------------------")
+  (print "In Memorium Matrix:")
   (for-each displayln (matrix in-memorium 12-tone-row)))
 
-; (examples)
+(examples)
 
 (define (print-12:c-matrix x)
   (for-each displayln (cdr (matrix x 12-tone-row:c))))

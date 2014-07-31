@@ -35,6 +35,7 @@
     (if lookup (car (cdr lookup)) #f)))
 
 (define-syntax sref 
+  ; more intended for quick interactive use
   (syntax-rules ()
     ((_ x) (lookup-scale 'x))))
 
@@ -54,7 +55,7 @@
 (define-scale prometheus       : C D E Gb A Bb)
 (define-scale pelog            : C Db Eb Gb G Ab Bb)
 (define-scale slendro          : C D F G A)
-(define-scale yo               : C D F G A)
+(scale-synonym slendro yo)
 (define-scale iwato            : C Db F Gb Bb)
 (define-scale hirajoushi       : C E Gb G B)
 (define-scale insen            : C Db F G Bb)
@@ -67,7 +68,7 @@
 (define-scale diminished : C Eb Gb A)
 
 ; --- MOLTS -----------------------------
-(define-scale molt1       (lookup-scale 'whole-tone))
+(scale-synonym whole-tone molt1)
 (define-scale molt2       (interpolate/c (lookup-scale 'diminished) 1))
 (define-scale secret-mode (interpolate/c (lookup-scale 'augmented) -1))
 (define-scale molt3       (interpolate/c (lookup-scale 'secret-mode) -1))
