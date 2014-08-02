@@ -158,5 +158,3 @@
     (for-each print molts)
     (print "\n** pure molts")
     (for-each print pures)))
-
-(molts 24)
