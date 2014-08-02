@@ -1,3 +1,6 @@
+; This file assumes srfi-69 is available, but provides easy fixes if it isn't.
+; Search for ** to find spots where this matters.
+
 ;- a normal cut -----------------------------------
 (define-syntax cut
   (syntax-rules ()
@@ -30,21 +33,26 @@
       (and (p (car lst))
            (every p (cdr lst)))))
 
+(define (any p lst)
+  (and (not (null? lst))
+       (or (p (car lst))
+           (any p (cdr lst)))))
+
 (define (filter p lst)
   (fold-right1 (lambda (a d)
                  (if (p a) (cons a d) d))
                lst))
 
-(define (zip lst1 lst2)
-  (if (or (null? lst1) (null? lst2))
+(define (zip lst . lsts)
+  (if (any null? (cons lst lsts))
       '()
-      (cons (list (car lst1) (car lst2)) 
-            (zip (cdr lst1) (cdr lst2)))))
+      (cons (apply list (map car (cons lst lsts)))
+            (zip (cdr lst) (map cdr lsts)))))
 
 (define (compose . functions)
   (lambda xs
     (let ((fs (reverse functions)))
-      (fold-left (lambda (f x) (f x)) 
+      (fold-left (lambda (f x) (f x))
                  (apply (car fs) xs)
                  (cdr fs)))))
 
@@ -56,7 +64,7 @@
 
 (define-syntax define/memo
   (syntax-rules ()
-    ((_ . xs) (define . xs)) ; only uncomment if srfi-69 is available
+    ; ((_ . xs) (define . xs)) ;** uncomment if srfi-69 isn't available
     ((_ (F . ARGS) . BODY)
      (define F
        (let ((memos (make-hash-table)))
@@ -103,6 +111,11 @@
      ((member* (car lst) found list=?)
       (loop (cdr lst) found))
      (else (loop (cdr lst) (cons (car lst) found))))))
+
+(define remove-duplicates/lists
+  ;** comment out if srfi-69 is unavailable
+  (compose (cut map car <>) hash-table->alist
+           alist->hash-table (cut map (cut cons <> #t) <>)))
 
 ;- protect ----------------------------------------
 (define (compose-predicates . predicates)
