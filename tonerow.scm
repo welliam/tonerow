@@ -120,6 +120,9 @@
 (define dynamics-row '(pp p mp mf f ff))
 (define 12-tone-row (range 12))
 (define 12-tone-row:c '(C Db D Eb E F Gb G Ab A Bb B))
+(define 24-tone-row:c 
+  '(C Db- Db D- D Eb- Eb E- E F- F Gb- Gb G- G Ab- Ab A- A Bb- Bb B- B C-))
+
 
 
 ; --- Examples ------------------------------------
@@ -173,7 +176,7 @@
   (print "In Memorium Matrix:")
   (for-each displayln (matrix in-memorium 12-tone-row)))
 
-(examples)
+; (examples)
 
 (define (print-12:c-matrix x)
   (for-each displayln (cdr (matrix x 12-tone-row:c))))
@@ -206,10 +209,15 @@
                   (parent : list?))
   (member* scale (cdr (find-modes scale parent)) list=?))
 
+(define molt? mode-of-limited-transposition?)
+
 (define molt?/c (cut mode-of-limited-transposition? <> 12-tone-row:c))
 
 ; --- SYMMETRICAL SCALES --------------------------
-(define (interpolate scale pscale n)
+(define/protect (interpolate
+                  (scale  : list? (cut sublist? <> pscale))
+                  (pscale : list?)
+                  (n      : number? (cut <= <> (length scale))))
   (let ((interpol
          (fold-right1 (lambda (note rest)
                         (append
@@ -226,5 +234,3 @@
          interpol))))
 
 (define interpolate/c (cut interpolate <> 12-tone-row:c <>))
-
-(interpolate/c (interpolate/c '(C Gb) 2) -2)

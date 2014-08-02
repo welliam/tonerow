@@ -13,9 +13,12 @@
      (cut-help (ks ...) (b ... x) rest))))
 
 ;- various things ---------------------------------
+(define second (compose car cdr))
 (define (displayln x) (display x) (newline))
 (define (print . xs) (for-each display xs) (newline))
 (define call/cc call-with-current-continuation)
+(define add1 (cut + <> 1))
+(define sub1 (cut - <> 1))
 
 (define (fold-right f x lst)
   (if (null? lst)
@@ -24,10 +27,52 @@
 
 (define fold-right1 (cut fold-right <> '() <>))
 
+(define (fold-left f x lst)
+  (if (null? lst)
+      x
+      (fold-left f (f (car lst) x) (cdr lst))))
+
+(define (every p lst)
+  (or (null? lst)
+      (and (p (car lst))
+           (every p (cdr lst)))))
+
 (define (filter p lst)
   (fold-right1 (lambda (a d)
                  (if (p a) (cons a d) d))
                lst))
+
+(define (zip lst1 lst2)
+  (if (or (null? lst1) (null? lst2))
+      '()
+      (cons (list (car lst1) (car lst2)) 
+            (zip (cdr lst1) (cdr lst2)))))
+
+(define (compose . functions)
+  (lambda xs
+    (let ((fs (reverse functions)))
+      (fold-left (lambda (f x) (f x)) 
+                 (apply (car fs) xs)
+                 (cdr fs)))))
+
+(define-syntax if=>
+  (syntax-rules ()
+    ((_ test f else)
+     (let ((temp test))
+       (if temp (f temp) else)))))
+
+(define-syntax define/memo
+  (syntax-rules ()
+    ; ((_ . xs) (define . xs)) ; only uncomment if srfi-69 is available
+    ((_ (F . ARGS) . BODY)
+     (define F
+       (let ((memos (make-hash-table)))
+         (lambda ARGS
+           (hash-table-ref memos (list . ARGS)
+             (lambda ()
+               (let ((result ((lambda ARGS . BODY) . ARGS)))
+                 (hash-table-set! memos (list . ARGS) result)
+                 result)))))))))
 
 ;- membership tests -------------------------------
 (define (member* x lst p)
@@ -51,7 +96,7 @@
       (loop (cdr lst) found))
      (else (loop (cdr lst) (cons (car lst) found))))))
 
-(define (remove-duplicates/lists lst)
+(define/memo (remove-duplicates/lists lst)
   (let loop ((lst lst) (found '()))
     (cond
      ((null? lst) (reverse found))
@@ -60,7 +105,6 @@
      (else (loop (cdr lst) (cons (car lst) found))))))
 
 ;- protect ----------------------------------------
-
 (define (compose-predicates . predicates)
   (lambda (x)
     (or (null? predicates)
@@ -75,6 +119,9 @@
 
 (define-syntax lambda/protect
   (syntax-rules (:)
+    ; leave this case uncommented if you don't want protection
+    ((_ ((arg . ps) ...) body ...)
+     (lambda (arg ...) body ...))
     ((_ ((arg : . ps) ...) body ...)
      (lambda (arg ...)
        (if (and ((apply compose-predicates (list . ps)) arg) ...)
@@ -181,26 +228,10 @@
     ((_ x k formals (body ...) rest-arg rest-arg?)
      (apply-syn-cont k formals (x body ...) rest-arg rest-arg?))))
 
-;- union types ------------------------------------
-
-(define (any-predicate ps x)
-  (let loop ((ps ps))
-    (and (not (null? ps))
-         (or ((car ps) x)
-             (loop (cdr ps))))))
-
-(define (union-predicate . predicates)
-  (lambda (x)
-    (any-predicate predicates x)))
-
 ;- pointless --------------------------------------
 (define (partial-apply f . given-args)
   (lambda restof-args
     (apply f (append given-args restof-args))))
-
-(define (compose f g)
-  (lambda args
-    (f (apply g args))))
 
 (define-syntax pointless
   (syntax-rules ()
