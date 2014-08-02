@@ -13,13 +13,6 @@
      (cut-help (ks ...) (b ... x) rest))))
 
 ;- various things ---------------------------------
-(define second (compose car cdr))
-(define (displayln x) (display x) (newline))
-(define (print . xs) (for-each display xs) (newline))
-(define call/cc call-with-current-continuation)
-(define add1 (cut + <> 1))
-(define sub1 (cut - <> 1))
-
 (define (fold-right f x lst)
   (if (null? lst)
       x
@@ -63,7 +56,7 @@
 
 (define-syntax define/memo
   (syntax-rules ()
-    ; ((_ . xs) (define . xs)) ; only uncomment if srfi-69 is available
+    ((_ . xs) (define . xs)) ; only uncomment if srfi-69 is available
     ((_ (F . ARGS) . BODY)
      (define F
        (let ((memos (make-hash-table)))
@@ -73,6 +66,13 @@
                (let ((result ((lambda ARGS . BODY) . ARGS)))
                  (hash-table-set! memos (list . ARGS) result)
                  result)))))))))
+
+(define second (compose car cdr))
+(define (displayln x) (display x) (newline))
+(define (print . xs) (for-each display xs) (newline))
+(define call/cc call-with-current-continuation)
+(define add1 (cut + <> 1))
+(define sub1 (cut - <> 1))
 
 ;- membership tests -------------------------------
 (define (member* x lst p)
@@ -96,7 +96,7 @@
       (loop (cdr lst) found))
      (else (loop (cdr lst) (cons (car lst) found))))))
 
-(define/memo (remove-duplicates/lists lst)
+(define (remove-duplicates/lists lst)
   (let loop ((lst lst) (found '()))
     (cond
      ((null? lst) (reverse found))

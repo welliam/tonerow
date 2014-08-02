@@ -1,4 +1,4 @@
-(load "tonerow.scm")
+(load "tonerow.scm") ; we need translate-row
 
 
 ; note rotation dot tumblr dot com
@@ -158,3 +158,5 @@
     (for-each print molts)
     (print "\n** pure molts")
     (for-each print pures)))
+
+(molts 24)
