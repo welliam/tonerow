@@ -44,15 +44,31 @@
 
 ; primes
 (define (prime? n)
-  (let loop ((i 2))
-    (or (= i n)
-        (and (not (zero? (modulo n i)))
-             (loop (+ i 1))))))
+  (and (not (= n 1))
+       (let loop ((i 2))
+         (or (= i n)
+             (and (not (zero? (modulo n i)))
+                  (loop (+ i 1)))))))
 
 (define (prime-factors n)
     (filter (lambda (i) (and (prime? i) (zero? (modulo n i))))
             (map (cut + 2 <>)
                  (range (/ n 2)))))
+
+(define (good-primes limit)
+   (filter (lambda (n)
+             (let ((facs (prime-factors n)))
+               (and (= (length facs) 1)
+                    (not (any (lambda (n) (memq n facs))
+                              (range 6))))))
+           (range limit)))
+
+(define primes^2
+  (map (lambda (x) (* x x))
+       (filter prime? (range 200))))
+
+(define (count-molts n)
+  (length (molts n)))
 
 (define (take-every lst n)
   (let loop ((lst lst) (i 1))
@@ -72,7 +88,7 @@
 
 ; molts
 (define (encode-bit-list bit-list t)
-  (cond 
+  (cond
    ((null? bit-list) '())
    ((zero? (car bit-list))
     (encode-bit-list (cdr bit-list) (cdr t)))
@@ -86,7 +102,7 @@
 
 (define (every-interpolation interval pscale)
   (let ((rotations (all-rotations interval pscale)))
-    (map combine-rotations 
+    (map combine-rotations
          (every-combination rotations))))
 
 (define (molts n)
@@ -100,7 +116,7 @@
 
 ; finding "pure" or "true" molts
 (define (sublist? x y)
-  (cond 
+  (cond
    ((null? x) #t)
    ((memq (car x) y)
     (sublist? (cdr x) y))
@@ -125,26 +141,28 @@
     (print "** " n " tone scale\n")
     (print "** prime symmetrical scales")
     (for-each print (prime-symmetrical-scales n))
-    (print "\n** molts")
+    (print "\n** molts (" (length molts) ")")
     (for-each print molts)
     (print "\n** pure molts")
     (for-each print (pure-molts molts))))
 
 (define (print-molt-to-file n)
-  (with-output-to-file 
-      (if (< n 10)
-          (format "scales/molts0~a.txt" n)
-          (format "scales/molts~a.txt" n))
+  (with-output-to-file
+      (cond
+       ((< n 10) (format "scales/molts00~a.txt" n))
+       ((< n 100) (format "scales/molts0~a.txt" n))
+       (else (format "scales/molts~a.txt" n)))
     (cut print-molts n))
-  (print "finished" n))
+  (print "finished " n))
 
 (define (print-all-molts-to-file)
   (for-each print-molt-to-file
-            (map (cut + 2 <>) 
-                 (range 23))))
+            (filter (compose not prime?)
+                    (map (cut + 2 <>)
+                         (range 23)))))
 
 (define (print-translated-molts n pscale)
-  (let* ((translate-to-c 
+  (let* ((translate-to-c
           (lambda (scales)
             (map (cut translate-row <> (range n) pscale) scales)))
          (molts (sort (molts n) (lambda (a b) (< (length a) (length b)))))
@@ -158,3 +176,25 @@
     (for-each print molts)
     (print "\n** pure molts")
     (for-each print pures)))
+
+(define (print-translated-molts-to-file n pscale)
+  (with-output-to-file
+      (cond
+       ((< n 10) (format "scales/molts00~a-translated.txt" n))
+       ((< n 100) (format "scales/molts0~a-translated.txt" n))
+       (else (format "scales/molts~a-translated.txt" n)))
+    (cut print-translated-molts n pscale))
+  (print "finished " n " (translated)"))
+
+(define (main)
+  (print-translated-molts-to-file 4 '(C Eb Gb A))
+  (print-translated-molts-to-file 6 '(C D E Gb Ab Bb))
+  (print-translated-molts-to-file 12 12-tone-row:c)
+  (print-translated-molts-to-file 24 24-tone-row:c)
+  (print-all-molts-to-file)
+  (print-molt-to-file 25)
+  (print-molt-to-file 49)
+  (print-molt-to-file 121)
+  (print-molt-to-file 169))
+
+(main)
