@@ -1,17 +1,15 @@
 (load "tonerow.scm") ; we need translate-row
+(load "binary-tree.scm")
 
 
-; note rotation dot tumblr dot com
-(define *finished-rotation* "finished")
+;- note rotation ----------------------------------
+(define *finished-rotation* (string-copy "finished"))
 
 (define (succ x lst)
-  (let loop ((t lst))
-    (cond
-     ((and (null? (cdr t)) (eq? x (car t)))
-      *finished-rotation*)
-     ((eq? x (car t))
-      (second t))
-     (else (loop (cdr t))))))
+  (let* ((search (memq x lst)) (tail (cdr search)))
+    (if (null? tail)
+        *finished-rotation*
+        (car tail))))
 
 (define (rotate-scale scale pscale)
   (map (cut succ <> pscale) scale))
@@ -26,7 +24,7 @@
   (apply append (apply map list rotations)))
 
 
-; bits
+;- bits -------------------------------------------
 (define (bit-succ bit)
   (cond
    ((null? bit) '(1))
@@ -42,7 +40,7 @@
               (cons (cons 1 x) acc)))))
 
 
-; primes
+;- primes -----------------------------------------
 (define (prime? n)
   (and (not (= n 1))
        (let loop ((i 2))
@@ -51,7 +49,7 @@
                   (loop (+ i 1)))))))
 
 (define (prime-factors n)
-    (filter (lambda (i) (and (prime? i) (zero? (modulo n i))))
+    (filter (lambda (i) (and (zero? (modulo n i)) (prime? i)))
             (map (cut + 2 <>)
                  (range (/ n 2)))))
 
@@ -63,19 +61,13 @@
                               (range 6))))))
            (range limit)))
 
-(define primes^2
-  (map (lambda (x) (* x x))
-       (filter prime? (range 200))))
-
 (define (count-molts n)
   (length (molts n)))
 
 (define (take-every lst n)
-  (let loop ((lst lst) (i 1))
-    (cond
-     ((null? lst) '())
-     ((= i 1) (cons (car lst) (loop (cdr lst) n)))
-     (else (loop (cdr lst) (- i 1))))))
+  (map car
+       (filter (lambda (p) (zero? (modulo (second p) n)))
+               (zip-range lst))))
 
 (define (divide-list lst n)
   (take-every lst (/ (length lst) n)))
@@ -86,7 +78,7 @@
     (map (cut divide-list ns <>) primes)))
 
 
-; molts
+;- molts ------------------------------------------
 (define (encode-bit-list bit-list t)
   (cond
    ((null? bit-list) '())
@@ -96,8 +88,7 @@
                (encode-bit-list (cdr bit-list) (cdr t))))))
 
 (define (every-combination t)
-  (map (lambda (bit-list)
-         (encode-bit-list bit-list t))
+  (map (cut encode-bit-list <> t)
        (bit-range (expt 2 (- (length t) 1)))))
 
 (define (every-interpolation interval pscale)
@@ -106,15 +97,23 @@
          (every-combination rotations))))
 
 (define (molts n)
-  (let ((pscale (range n)))
-    (remove-duplicates/lists
-     (apply append
-            (map (lambda (prime)
-                   (every-interpolation prime pscale))
-                 (prime-symmetrical-scales n))))))
+  (remove-duplicates/lists
+   (apply append
+          (map (lambda (prime)
+                 (every-interpolation prime (range n)))
+               (prime-symmetrical-scales n)))))
+
+(define (symmetrical-scales n-tones)
+  (let ((halfway (quotient (+ n-tones 1) 2)))
+    (map (lambda (scale)
+           (append scale (cdr (map (cut + halfway <>) scale))))
+         (every-combination (range (+ halfway 1))))))
 
 
-; finding "pure" or "true" molts
+;- sorted molts algorithm -------------------------
+
+
+;- finding "pure" or "true" molts -----------------
 (define (sublist? x y)
   (cond
    ((null? x) #t)
@@ -135,9 +134,9 @@
           molt-list))
 
 
-; printing
+;- printing molts ---------------------------------
 (define (print-molts n)
-  (let ((molts (sort (molts n) (lambda (a b) (< (length a) (length b))))))
+  (let ((molts (molts n)))
     (print "** " n " tone scale\n")
     (print "** prime symmetrical scales")
     (for-each print (prime-symmetrical-scales n))
@@ -165,14 +164,14 @@
   (let* ((translate-to-c
           (lambda (scales)
             (map (cut translate-row <> (range n) pscale) scales)))
-         (molts (sort (molts n) (lambda (a b) (< (length a) (length b)))))
+         (molts (molts n))
          (primes (translate-to-c (prime-symmetrical-scales n)))
          (pures (translate-to-c (pure-molts molts)))
          (molts (translate-to-c molts)))
     (print "** " n " tone scale\n")
     (print "** prime symmetrical scales")
     (for-each print primes)
-    (print "\n** molts")
+    (print "\n** molts (" (length molts) ")")
     (for-each print molts)
     (print "\n** pure molts")
     (for-each print pures)))
@@ -187,14 +186,15 @@
   (print "finished " n " (translated)"))
 
 (define (main)
-  (print-translated-molts-to-file 4 '(C Eb Gb A))
-  (print-translated-molts-to-file 6 '(C D E Gb Ab Bb))
+  (print-translated-molts-to-file 4 (take-every 12-tone-row:c 3))
+  (print-translated-molts-to-file 6 (take-every 12-tone-row:c 2))
   (print-translated-molts-to-file 12 12-tone-row:c)
   (print-translated-molts-to-file 24 24-tone-row:c)
+  (print-translated-molts-to-file 8 (take-every 24-tone-row:c 3))
   (print-all-molts-to-file)
   (print-molt-to-file 25)
   (print-molt-to-file 49)
   (print-molt-to-file 121)
   (print-molt-to-file 169))
 
-(main)
+(take-every 24-tone-row:c 2)

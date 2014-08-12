@@ -1,4 +1,4 @@
-; NOTE: as it requires filesystem features, this file is written in chicken 
+; NOTE: as it requires filesystem features, this file is written in chicken
 ; scheme!
 
 (use posix irregex)
@@ -7,6 +7,10 @@
 "<!DOCTYPE html>
 
 <title>MOLTs</title>
+<link
+  rel=\"icon\"
+  href=\"https://upload.wikimedia.org/wikipedia/commons/d/db/Chrysopoea_of_Cleopatra_1.gif\"
+/>
 
 <style>
   body {
@@ -60,7 +64,7 @@
   (string-append
    "    <li><a href=\"scales/" filename
    "\">" (trim-leading-zeros (get-number filename) )
-   " tone scale" 
+   " tone scale"
    (if (translated? filename) " (in C)" "")
    "</a></li>"))
 
@@ -71,6 +75,19 @@
                     res))
               ""
               (directory "scales")))
+
+(define (get-scales)
+  (define (sort-strings ss)
+    (sort ss
+          (lambda (a b)
+            (let loop ((a (string->list a)) (b (string->list b)))
+              (and (not (null? a))
+                   (or (char<? (car a) (car b))
+                       (null? b)
+                       (loop (cdr a) (cdr b))))))))
+  (sort-strings (directory "scales")))
+
+(get-scales)
 
 (define (generate-page)
   (string-append head (list-scales) tail))

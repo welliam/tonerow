@@ -38,6 +38,14 @@
        (or (p (car lst))
            (any p (cdr lst)))))
 
+(define (take-every lst n)
+  (let loop ((i 0) (lst lst))
+    (cond
+     ((null? lst) '())
+     ((= i 0)
+      (cons (car lst) (loop (- n 1) (cdr lst))))
+     (else (loop (- i 1) (cdr lst))))))
+
 (define (filter p lst)
   (fold-right1 (lambda (a d)
                  (if (p a) (cons a d) d))
@@ -46,8 +54,17 @@
 (define (zip lst . lsts)
   (if (any null? (cons lst lsts))
       '()
-      (cons (apply list (map car (cons lst lsts)))
-            (zip (cdr lst) (map cdr lsts)))))
+      (let ((lsts (cons lst lsts)))
+        (cons (apply list (map car lsts))
+              (apply zip (map cdr lsts))))))
+
+(define (zip-range lst)
+  ; zips a lst with (range (length lst)), but more efficiently
+  (let loop ((lst lst) (i 0))
+    (if (null? lst)
+        '()
+        (cons (list (car lst) i)
+              (loop (cdr lst) (+ i 1))))))
 
 (define (compose . functions)
   (lambda xs
@@ -61,19 +78,6 @@
     ((_ test f else)
      (let ((temp test))
        (if temp (f temp) else)))))
-
-(define-syntax define/memo
-  (syntax-rules ()
-    ; ((_ . xs) (define . xs)) ;** uncomment if srfi-69 isn't available
-    ((_ (F . ARGS) . BODY)
-     (define F
-       (let ((memos (make-hash-table)))
-         (lambda ARGS
-           (hash-table-ref memos (list . ARGS)
-             (lambda ()
-               (let ((result ((lambda ARGS . BODY) . ARGS)))
-                 (hash-table-set! memos (list . ARGS) result)
-                 result)))))))))
 
 (define second (compose car cdr))
 (define (displayln x) (display x) (newline))
@@ -104,19 +108,6 @@
       (loop (cdr lst) found))
      (else (loop (cdr lst) (cons (car lst) found))))))
 
-(define (remove-duplicates/lists lst)
-  (let loop ((lst lst) (found '()))
-    (cond
-     ((null? lst) (reverse found))
-     ((member* (car lst) found list=?)
-      (loop (cdr lst) found))
-     (else (loop (cdr lst) (cons (car lst) found))))))
-
-(define remove-duplicates/lists
-  ;** comment out if srfi-69 is unavailable
-  (compose (cut map car <>) hash-table->alist
-           alist->hash-table (cut map (cut cons <> #t) <>)))
-
 ;- protect ----------------------------------------
 (define (compose-predicates . predicates)
   (lambda (x)
@@ -133,8 +124,8 @@
 (define-syntax lambda/protect
   (syntax-rules (:)
     ; leave this case uncommented if you don't want protection
-    ((_ ((arg . ps) ...) body ...)
-     (lambda (arg ...) body ...))
+;     ((_ ((arg . ps) ...) body ...)
+;      (lambda (arg ...) body ...))
     ((_ ((arg : . ps) ...) body ...)
      (lambda (arg ...)
        (if (and ((apply compose-predicates (list . ps)) arg) ...)
@@ -256,3 +247,8 @@
               (pointless . rest)))
     ((_ f . rest)
      (compose f (pointless . rest)))))
+
+(define-syntax cut/partial
+  (syntax-rules ()
+    ((_ . xs)
+     (cut/partial-help () () . xs))))

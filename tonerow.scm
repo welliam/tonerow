@@ -120,7 +120,7 @@
 (define dynamics-row '(pp p mp mf f ff))
 (define 12-tone-row (range 12))
 (define 12-tone-row:c '(C Db D Eb E F Gb G Ab A Bb B))
-(define 24-tone-row:c 
+(define 24-tone-row:c
   '(C Db- Db D- D Eb- Eb E- E F- F Gb- Gb G- G Ab- Ab A- A Bb- Bb B- B C-))
 
 
@@ -187,6 +187,11 @@
   (main))
 
 ; --- MODES ---------------------------------------
+(define/protect (sort-scale
+                 (scale  : list? (cut sublist? <> pscale))
+                 (pscale : list?))
+  (sort scale (lambda (x y) (member y (member x pscale)))))
+
 (define/protect (shift-list (lst : nonempty-list?) )
   (append (cdr lst) (list (car lst))))
 
@@ -199,7 +204,9 @@
 (define/protect (find-modes
                   (scale  : list? (cut sublist? <> parent))
                   (parent : list?))
-  (map (cut transpose-to <> parent (car scale))
+  (map (lambda (s)
+         (sort-scale (transpose-to s parent (car scale))
+                     parent))
        (find-modes/untransposed scale)))
 
 (define find-modes/c (cut find-modes <> 12-tone-row:c))
@@ -213,7 +220,7 @@
 
 (define molt?/c (cut mode-of-limited-transposition? <> 12-tone-row:c))
 
-; --- SYMMETRICAL SCALES --------------------------
+; --- INTERPOLATION -------------------------------
 (define/protect (interpolate
                   (scale  : list? (cut sublist? <> pscale))
                   (pscale : list?)
@@ -225,7 +232,7 @@
                              (append (transpose (list note) pscale n)
                                      (list note))
                              (cons note
-                                   (transpose (list note) pscale n)) )
+                                   (transpose (list note) pscale n)))
                          rest))
                       scale)))
     (remove-duplicates

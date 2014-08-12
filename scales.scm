@@ -1,11 +1,9 @@
 (load "tonerow.scm")
 
 (define (every p lst)
-  (call/cc 
-   (lambda (return)
-     (for-each (lambda (x) (if (p x) #t (return #f))) 
-               lst)
-     #t)))
+  (or (null? lst)
+      (and (p (car lst))
+           (every p (cdr lst)))))
 
 (define (sublist? lst1 lst2)
   (every (cut member <> lst2) lst1))
@@ -14,10 +12,10 @@
 
 (define-syntax define-scale
   (syntax-rules (:)
-    ((_ name : notes ...)
-     (define-scale name '(notes ...)))
     ((_ name scale)
-     (define-scale-f `(name ,scale)))))
+     (define-scale-f `(name ,scale)))
+    ((_ name : notes ...)
+     (define-scale name '(notes ...)))))
 
 (define (define-scale-f scale-entry)
   (set! scales (cons scale-entry scales)))
