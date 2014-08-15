@@ -23,7 +23,7 @@
 (define-syntax scale-synonym
   (syntax-rules ()
     ((_ defined synonyms ...)
-     (for-each (lambda (s) 
+     (for-each (lambda (s)
                  (define-scale-f (list s (lookup-scale 'defined))))
                '(synonyms ...)))))
 
@@ -31,16 +31,16 @@
   (let ((lookup (assq name scales)))
     (if lookup (car (cdr lookup)) #f)))
 
-(define-syntax sref 
+(define-syntax sref
   ; intended for quick interactive use
   (syntax-rules ()
     ((_ x) (lookup-scale 'x))))
 
 (define (find-scales p)
-  (filter (cut* p (car (cdr <>))) scales))
+  (filter (cut* p (second <>)) scales))
 
 (define (find-scales-containing subscale)
-  (let ((s (if (symbol? subscale) 
+  (let ((s (if (symbol? subscale)
                (lookup-scale subscale)
                subscale)))
     (find-scales (cut sublist? s <>))))
@@ -86,7 +86,7 @@
     ((_ parent-scale names ...)
      (let loop ((modes (find-modes/c (lookup-scale 'parent-scale)))
                 (mode-names '(names ...)))
-       (cond 
+       (cond
         ((null? mode-names) #t)
         ((eq? (car mode-names) 'skip)
          (loop (cdr modes) (cdr mode-names)))
@@ -99,11 +99,11 @@
 
 ; --- MINOR MODES ---------------------------------
 (define-modes-from melodic-minor
-  skip dorian-b2 lydian-augmented lydian-dominant 
+  skip dorian-b2 lydian-augmented lydian-dominant
   mixolydian-b6 half-diminished altered-dominant)
 
 (define-modes-from harmonic-minor
-  skip locrian-nat6 ionian-#5 ukranian-minor 
+  skip locrian-nat6 ionian-#5 ukranian-minor
   phrygian-dominant lydian-#2 altered-diminished)
 
 (define-scale double-harmonic : C Db E F G Ab B)

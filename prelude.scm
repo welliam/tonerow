@@ -15,11 +15,34 @@
     ((_ (ks ...) (b ...) (x . rest))
      (cut-help (ks ...) (b ... x) rest))))
 
-;- various things ---------------------------------
+;- pointless --------------------------------------
+(define-syntax pf
+  (syntax-rules ()
+    ((_ (f args ...))
+     (part f args ...))
+    ((_ f) f)
+    ((_ (f args ...) . rest)
+     (compose (part f args ...)
+              (pf . rest)))
+    ((_ f . rest)
+     (compose f (pf . rest)))))
+
+(define-syntax cut/partial
+  (syntax-rules ()
+    ((_ . xs)
+     (cut/partial-help () () . xs))))
+
+;- various functions ------------------------------
+;- lists ------------
 (define (fold-right f x lst)
   (if (null? lst)
       x
       (f (car lst) (fold-right f x (cdr lst)))))
+
+(define (unfold p f g x)
+  (if (p x)
+      '()
+      (cons (f x) (unfold p f g (g x)))))
 
 (define fold-right1 (cut fold-right <> '() <>))
 
@@ -39,24 +62,27 @@
            (any p (cdr lst)))))
 
 (define (take-every lst n)
-  (let loop ((i 0) (lst lst))
-    (cond
-     ((null? lst) '())
-     ((= i 0)
-      (cons (car lst) (loop (- n 1) (cdr lst))))
-     (else (loop (- i 1) (cdr lst))))))
+  (map car
+       (filter (lambda (p) (zero? (modulo (second p) n)))
+               (zip-range lst))))
+
+(define (divide-list lst n)
+  (take-every lst (/ (length lst) n)))
 
 (define (filter p lst)
   (fold-right1 (lambda (a d)
                  (if (p a) (cons a d) d))
                lst))
 
-(define (zip lst . lsts)
-  (if (any null? (cons lst lsts))
-      '()
-      (let ((lsts (cons lst lsts)))
-        (cons (apply list (map car lsts))
-              (apply zip (map cdr lsts))))))
+(define (zip-with f lst . lsts)
+  (let loop ((lsts (cons lst lsts)))
+    (if (any null? lsts)
+        '()
+        (cons (apply f (map car lsts))
+              (loop (map cdr lsts))))))
+
+(define (zip . xs)
+  (apply zip-with list xs))
 
 (define (zip-range lst)
   ; zips a lst with (range (length lst)), but more efficiently
@@ -65,6 +91,14 @@
         '()
         (cons (list (car lst) i)
               (loop (cdr lst) (+ i 1))))))
+
+;- functions --------
+(define (const x)
+  (lambda _ x))
+
+(define (part f . given-args)
+  (lambda restof-args
+    (apply f (append given-args restof-args))))
 
 (define (compose . functions)
   (lambda xs
@@ -79,6 +113,7 @@
      (let ((temp test))
        (if temp (f temp) else)))))
 
+(define (id x) x)
 (define second (compose car cdr))
 (define (displayln x) (display x) (newline))
 (define (print . xs) (for-each display xs) (newline))
@@ -119,24 +154,27 @@
   (syntax-rules ()
     ((_ (name args ...) body ...)
      (define name
-       (lambda/protect (args ...) body ...)))))
+       (lambda/protect (args ...) desc: 'name body ...)))))
 
 (define-syntax lambda/protect
-  (syntax-rules (:)
-    ; leave this case uncommented if you don't want protection
+  (syntax-rules (: desc:)
+    ; leave this case uncommented if you don't want protection (possibly faster)
 ;     ((_ ((arg . ps) ...) body ...)
 ;      (lambda (arg ...) body ...))
-    ((_ ((arg : . ps) ...) body ...)
+    ((_ ((arg : . ps) ...) desc: desc body ...)
      (lambda (arg ...)
        (if (and ((apply compose-predicates (list . ps)) arg) ...)
            (begin body ...)
            (error
-            "Bad argument given to function. Arguments and predicates:\n"
-            `((,arg . ps) ...)))))))
+            (string-append
+             "in " (symbol->string desc)
+             " bad argument given. Arguments and predicates:\n")
+            `((,arg . ps) ...)))))
+    ((_ ((arg : . ps) ...) body ...)
+     (lambda/protect ((arg : . ps) ...) desc: 'function body ...))))
 
 (define/protect (not-p (p : procedure?))
-  (lambda xs
-    (not (apply p xs))))
+  (lambda xs (not (apply p xs))))
 
 (define/protect (list-of (p : procedure?))
   (lambda (lst)
@@ -145,18 +183,11 @@
              (and (p (car lst))
                   ((list-of p) (cdr lst)))))))
 
-(define/protect (range (n : number? (not-p negative?)))
-  (let loop ((i 0))
-    (if (>= i n)
-        '()
-        (cons i (loop (+ i 1))))))
+(define/protect (range (n : integer? (not-p negative?)))
+  (unfold (part <= n) id (part + 1) 0))
 
-(define/protect (nonempty-list? (x : yes))
+(define/protect (nonempty-list? (x : (const #t)))
   (and (list? x) (not (null? x))))
-
-(define (yes x) #t)
-
-(define (id x) x)
 
 ;- cut* -------------------------------------------
 
@@ -215,8 +246,7 @@
 (define-syntax cut-list-recur2
   (syntax-rules ()
     ((_ (tail-formal ...) (tail-body ...)
-        k
-        (head-formal ...) (head-body ...)
+        k (head-formal ...) (head-body ...)
         rest-arg rest-arg?)
      (apply-syn-cont k
        (head-formal ... tail-formal ...)
@@ -231,24 +261,3 @@
      (apply-syn-cont k (x formal ...) (x body ...) rest-arg rest-arg?))
     ((_ x k formals (body ...) rest-arg rest-arg?)
      (apply-syn-cont k formals (x body ...) rest-arg rest-arg?))))
-
-;- pointless --------------------------------------
-(define (partial-apply f . given-args)
-  (lambda restof-args
-    (apply f (append given-args restof-args))))
-
-(define-syntax pointless
-  (syntax-rules ()
-    ((_ (f args ...))
-     (partial-apply f args ...))
-    ((_ f) f)
-    ((_ (f args ...) . rest)
-     (compose (partial-apply f args ...)
-              (pointless . rest)))
-    ((_ f . rest)
-     (compose f (pointless . rest)))))
-
-(define-syntax cut/partial
-  (syntax-rules ()
-    ((_ . xs)
-     (cut/partial-help () () . xs))))

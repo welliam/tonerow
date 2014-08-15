@@ -241,3 +241,12 @@
          interpol))))
 
 (define interpolate/c (cut interpolate <> 12-tone-row:c <>))
+
+; (define (symmetrical-scale? scale pscale)
+;   (let ((ints (intervals scale pscale))
+;         (rev-ints (intervals (reverse scale) pscale)))
+;     (equal? ints (map abs rev-ints))))
+
+(define (intervals row prow)
+  (let ((new (translate-row row prow (range (length prow)))))
+    (zip-with - (cdr new) new)))

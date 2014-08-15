@@ -56,7 +56,7 @@
 (define (tree->list tree)
   (if (binary-null? tree)
       '()
-      (append (tree->list (binary-branch-less tree)) 
+      (append (tree->list (binary-branch-less tree))
               (list (binary-value tree))
               (tree->list (binary-branch-more tree)))))
 

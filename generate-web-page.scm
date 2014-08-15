@@ -44,10 +44,9 @@
 
 </body>\n")
 
-(define (reg r)
-  (lambda (s)
-    (let ((search (irregex-extract r s)))
-      (and (not (null? search)) (car search)))))
+(define ((reg r) s)
+  (let ((search (irregex-extract r s)))
+    (and (not (null? search)) (car search))))
 
 (define get-number (reg "\\d+"))
 (define translated? (reg "-translated"))
@@ -86,8 +85,6 @@
                        (null? b)
                        (loop (cdr a) (cdr b))))))))
   (sort-strings (directory "scales")))
-
-(get-scales)
 
 (define (generate-page)
   (string-append head (list-scales) tail))

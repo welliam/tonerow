@@ -64,14 +64,6 @@
 (define (count-molts n)
   (length (molts n)))
 
-(define (take-every lst n)
-  (map car
-       (filter (lambda (p) (zero? (modulo (second p) n)))
-               (zip-range lst))))
-
-(define (divide-list lst n)
-  (take-every lst (/ (length lst) n)))
-
 (define (prime-symmetrical-scales n)
   (let loop ((ns (range n))
              (primes (prime-factors n)))
@@ -96,21 +88,35 @@
     (map combine-rotations
          (every-combination rotations))))
 
-(define (molts n)
-  (remove-duplicates/lists
-   (apply append
-          (map (lambda (prime)
-                 (every-interpolation prime (range n)))
-               (prime-symmetrical-scales n)))))
+(define (every-prime-interpolation ntones)
+  (apply append
+         (map (let ((prow (range ntones)))
+                (lambda (prime)
+                  (every-interpolation prime prow)))
+              (prime-symmetrical-scales ntones))))
 
-(define (symmetrical-scales n-tones)
-  (let ((halfway (quotient (+ n-tones 1) 2)))
-    (map (lambda (scale)
-           (append scale (cdr (map (cut + halfway <>) scale))))
-         (every-combination (range (+ halfway 1))))))
+; can you interpolate one scale in multiple ways and come across the same
+; molt set?
+
+(define molts (compose remove-duplicates/lists every-prime-interpolation))
 
 
 ;- sorted molts algorithm -------------------------
+(define (molts ntones)
+  (let ((pscale (range ntones)))
+    (let loop ((found (numlist-tree))
+               (scales (every-prime-interpolation ntones)))
+      (if (null? scales)
+          '()
+          (let ((added (numlist-tree-add (car scales) found)))
+            (if (eq? added 'same)
+                (loop found (cdr scales))
+                (cons (car scales)
+                      (loop (apply numlist-tree-cons* found
+                                   (find-modes (car scales) pscale))
+                            (cdr scales)))))))))
+
+(molts 12)
 
 
 ;- finding "pure" or "true" molts -----------------
