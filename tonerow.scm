@@ -249,4 +249,11 @@
 
 (define (intervals row prow)
   (let ((new (translate-row row prow (range (length prow)))))
-    (zip-with - (cdr new) new)))
+    (map - (cdr new) new)))
+
+(define (unintervals intervals prow)
+  (cons (car prow)
+        (map (cut list-ref prow <>)
+             (fold-right1 (lambda (a lst)
+                            (cons a (map (cut + a <>) lst)))
+                          intervals))))

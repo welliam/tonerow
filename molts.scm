@@ -49,9 +49,9 @@
                   (loop (+ i 1)))))))
 
 (define (prime-factors n)
-    (filter (lambda (i) (and (zero? (modulo n i)) (prime? i)))
-            (map (cut + 2 <>)
-                 (range (/ n 2)))))
+  (filter (lambda (i) (and (zero? (modulo n i)) (prime? i)))
+          (map (cut + 2 <>)
+               (range (/ n 2)))))
 
 (define (good-primes limit)
    (filter (lambda (n)
@@ -98,25 +98,12 @@
 ; can you interpolate one scale in multiple ways and come across the same
 ; molt set?
 
-(define molts (compose remove-duplicates/lists every-prime-interpolation))
+(define molts (compose remove-duplicates/hash every-prime-interpolation))
 
-
-;- sorted molts algorithm -------------------------
-(define (molts ntones)
-  (let ((pscale (range ntones)))
-    (let loop ((found (numlist-tree))
-               (scales (every-prime-interpolation ntones)))
-      (if (null? scales)
-          '()
-          (let ((added (numlist-tree-add (car scales) found)))
-            (if (eq? added 'same)
-                (loop found (cdr scales))
-                (cons (car scales)
-                      (loop (apply numlist-tree-cons* found
-                                   (find-modes (car scales) pscale))
-                            (cdr scales)))))))))
-
-(molts 12)
+(define (filter-homogeneous scales n)
+  (filter (cut apply = <>) 
+          (map (cut intervals <> (range n)) 
+               scales)))
 
 
 ;- finding "pure" or "true" molts -----------------
@@ -140,16 +127,47 @@
           molt-list))
 
 
+;- symmetrical scales -----------------------------
+(define (mirror-scale lst n)
+  (let* ((other-side (map (lambda (x) (if (zero? x) x (- n x)))
+                         (reverse (cdr lst)))))
+    (append lst
+            (filter (lambda (n) (not (= n 0)))
+                    other-side))))
+
+(define (add-to-ordered lst n)
+  (if (or (null? lst)
+          (< n (car lst)))
+      (cons n lst)
+      (cons (car lst) (add-to-ordered (cdr lst) n))))
+
+(define (symmetrical-scales ntones)
+  (let ((scales (map (cut mirror-scale <> ntones)
+                     (every-combination (range (ceiling (/ ntones 2)))))))
+    (sort (if (even? ntones)
+              (append scales 
+                (map (cut add-to-ordered <> (/ ntones 2))
+                     scales))
+              scales)
+          (lambda (x y) (eq? (compare-numlist x y) 'less)))))
+
+
 ;- printing molts ---------------------------------
+(define (print-given n molts symmetricals)
+  (print "** " n " tone scale\n")
+  (print "** prime symmetrical scales")
+  (for-each print (prime-symmetrical-scales n))
+  (print "\n** molts (" (length molts) ")")
+  (for-each print molts)
+  (print "\n** symmetrical scales (" (length symmetricals) ")")
+  (for-each print symmetricals)
+  (print "\n** pure molts")
+  (for-each print (pure-molts molts)))
+
 (define (print-molts n)
-  (let ((molts (molts n)))
-    (print "** " n " tone scale\n")
-    (print "** prime symmetrical scales")
-    (for-each print (prime-symmetrical-scales n))
-    (print "\n** molts (" (length molts) ")")
-    (for-each print molts)
-    (print "\n** pure molts")
-    (for-each print (pure-molts molts))))
+  (let ((molts (molts n))
+        (syms (symmetrical-scales n)))
+    (print-given n molts syms)))
 
 (define (print-molt-to-file n)
   (with-output-to-file
@@ -173,14 +191,9 @@
          (molts (molts n))
          (primes (translate-to-c (prime-symmetrical-scales n)))
          (pures (translate-to-c (pure-molts molts)))
-         (molts (translate-to-c molts)))
-    (print "** " n " tone scale\n")
-    (print "** prime symmetrical scales")
-    (for-each print primes)
-    (print "\n** molts (" (length molts) ")")
-    (for-each print molts)
-    (print "\n** pure molts")
-    (for-each print pures)))
+         (molts (translate-to-c molts))
+         (syms (translate-to-c (symmetrical-scales n))))
+    (print-given n molts syms)))
 
 (define (print-translated-molts-to-file n pscale)
   (with-output-to-file
@@ -195,12 +208,14 @@
   (print-translated-molts-to-file 4 (take-every 12-tone-row:c 3))
   (print-translated-molts-to-file 6 (take-every 12-tone-row:c 2))
   (print-translated-molts-to-file 12 12-tone-row:c)
-  (print-translated-molts-to-file 24 24-tone-row:c)
   (print-translated-molts-to-file 8 (take-every 24-tone-row:c 3))
+  (print-translated-molts-to-file 24 24-tone-row:c)
   (print-all-molts-to-file)
   (print-molt-to-file 25)
   (print-molt-to-file 49)
   (print-molt-to-file 121)
   (print-molt-to-file 169))
 
-(take-every 24-tone-row:c 2)
+(molts 24)
+
+(main)

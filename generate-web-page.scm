@@ -1,6 +1,7 @@
 ; NOTE: as it requires filesystem features, this file is written in chicken
 ; scheme!
 
+(load "prelude.scm")
 (use posix irregex)
 
 (define head
@@ -61,7 +62,7 @@
 
 (define (format-list-entry filename)
   (string-append
-   "    <li><a href=\"scales/" filename
+   "    <li><a href=\"molts/" filename
    "\">" (trim-leading-zeros (get-number filename) )
    " tone scale"
    (if (translated? filename) " (in C)" "")

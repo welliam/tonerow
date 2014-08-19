@@ -27,30 +27,8 @@
     ((_ f . rest)
      (compose f (pf . rest)))))
 
-(define-syntax cut/partial
-  (syntax-rules ()
-    ((_ . xs)
-     (cut/partial-help () () . xs))))
-
 ;- various functions ------------------------------
 ;- lists ------------
-(define (fold-right f x lst)
-  (if (null? lst)
-      x
-      (f (car lst) (fold-right f x (cdr lst)))))
-
-(define (unfold p f g x)
-  (if (p x)
-      '()
-      (cons (f x) (unfold p f g (g x)))))
-
-(define fold-right1 (cut fold-right <> '() <>))
-
-(define (fold-left f x lst)
-  (if (null? lst)
-      x
-      (fold-left f (f (car lst) x) (cdr lst))))
-
 (define (every p lst)
   (or (null? lst)
       (and (p (car lst))
@@ -61,10 +39,34 @@
        (or (p (car lst))
            (any p (cdr lst)))))
 
-(define (take-every lst n)
-  (map car
-       (filter (lambda (p) (zero? (modulo (second p) n)))
-               (zip-range lst))))
+(define (fold-right f x lst . lsts)
+  (let loop ((lsts (cons lst lsts)))
+    (if (any null? lsts)
+        x
+        (apply f
+          (append (map car lsts)
+                  (list (loop (map cdr lsts))))))))
+
+(define (unfold p f g x)
+  (if (p x)
+      '()
+      (cons (f x) (unfold p f g (g x)))))
+
+(define (unfold1 f x)
+  (let ((this (f x)))
+    (if this
+        (cons x (unfold1 f this))
+        '())))
+
+(define (fold-right1 f lst . lsts)
+  (apply fold-right f '() lst lsts))
+
+(define (fold-left f x lst . lsts)
+  (let loop ((lsts (cons lst lsts)) (x x))
+    (if (any null? lsts)
+        x
+        (loop (map cdr lsts)
+              (apply f (append (map car lsts) (list x)))))))
 
 (define (divide-list lst n)
   (take-every lst (/ (length lst) n)))
@@ -74,15 +76,22 @@
                  (if (p a) (cons a d) d))
                lst))
 
-(define (zip-with f lst . lsts)
-  (let loop ((lsts (cons lst lsts)))
-    (if (any null? lsts)
-        '()
-        (cons (apply f (map car lsts))
-              (loop (map cdr lsts))))))
+(define (map-filter f lst)
+  (fold-right1 (lambda (a d)
+                 (let ((res (f a)))
+                   (if res (cons res d) d)))
+               lst))
 
-(define (zip . xs)
-  (apply zip-with list xs))
+; (define (map f lst . lsts)
+;   (if (null? lsts)
+;       (old-map f lst)
+;       (let loop ((lsts (cons lst lsts)))
+;         (if (any null? lsts)
+;             '()
+;             (cons (apply f (map car lsts))
+;                   (loop (map cdr lsts)))))))
+
+(define (zip . xs) (apply map list xs))
 
 (define (zip-range lst)
   ; zips a lst with (range (length lst)), but more efficiently
@@ -91,6 +100,25 @@
         '()
         (cons (list (car lst) i)
               (loop (cdr lst) (+ i 1))))))
+
+(define (take-every lst n)
+  (map car
+       (filter (lambda (p) (zero? (modulo (second p) n)))
+               (zip-range lst))))
+
+(define (circular-list . xs)
+  (set-final-cdr! xs xs)
+  xs)
+
+(define (set-final-cdr! lst x)
+  (if (null? (cdr lst))
+      (set-cdr! lst x)
+      (set-final-cdr! (cdr lst) x)))
+
+(define (take lst n)
+  (if (= n 0)
+      '()
+      (cons (car lst) (take (cdr lst) (- n 1)))))
 
 ;- functions --------
 (define (const x)
@@ -158,9 +186,9 @@
 
 (define-syntax lambda/protect
   (syntax-rules (: desc:)
-    ; leave this case uncommented if you don't want protection (possibly faster)
-;     ((_ ((arg . ps) ...) body ...)
-;      (lambda (arg ...) body ...))
+  ; leave this case uncommented if you don't want protection (possibly faster)
+    ((_ ((arg . ps) ...) body ...)
+     (lambda (arg ...) body ...))
     ((_ ((arg : . ps) ...) desc: desc body ...)
      (lambda (arg ...)
        (if (and ((apply compose-predicates (list . ps)) arg) ...)

@@ -35,7 +35,7 @@
     (if (eq? new 'same) tree new)))
 
 (define (binary-cons* tree compare . xs)
-  (fold-left (lambda (a tree) (binary-cons a tree compare))
+  (fold-left (cut binary-cons <> <> compare)
              tree
              xs))
 
@@ -46,11 +46,12 @@
       (case (compare x (binary-value tree))
         ((less)
          (binary-set-less
-          (binary-cons x (binary-branch-less tree) compare)
+          (binary-add x (binary-branch-less tree) compare)
           tree))
-        ((more) (binary-set-more
-                 (binary-cons x (binary-branch-more tree) compare)
-                 tree))
+        ((more) 
+         (binary-set-more
+          (binary-add x (binary-branch-more tree) compare)
+          tree))
         (else 'same))))
 
 (define (tree->list tree)
